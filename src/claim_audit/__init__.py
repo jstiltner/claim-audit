@@ -1,13 +1,15 @@
 """claim-audit: flags claim/evidence gaps in research repositories.
 
-Phase 1 covers import provenance only. See SPEC.md for the full check inventory and
-for what this tool deliberately does not attempt.
+Tier A is complete: import provenance and its two derived facts, breakdown-sums,
+ref-resolves and numeral-has-source. See SPEC.md for the check inventory, the tiering, and
+the Tier C modes this tool does not attempt at all.
 """
 
 from __future__ import annotations
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
+from claim_audit.finding import CheckResult, Finding
 from claim_audit.provenance import (
     LOCAL_ONLY,
     NEITHER,
@@ -25,6 +27,8 @@ __all__ = [
     "Import",
     "ScriptReport",
     "RepoReport",
+    "Finding",
+    "CheckResult",
     "analyse_repo",
     "__version__",
 ]

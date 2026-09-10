@@ -268,7 +268,7 @@ def test_cli_json_output(repo: Path, capsys):
     assert main([str(repo), "--json"]) == 0
     payload = capsys.readouterr().out
     assert '"classification": "package"' in payload
-    assert '"check": "import-provenance"' in payload
+    assert '"rule": "import-provenance"' in payload
 
 
 def test_cli_text_output_exits_zero_with_findings(repo: Path, capsys):

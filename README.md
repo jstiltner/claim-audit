@@ -7,8 +7,8 @@ places where that chain is decidable from the source text — starting with the 
 one: **does the script that produced a result import the package the result is attributed
 to?**
 
-Phase 1 ships one check, `import-provenance`. See [SPEC.md](SPEC.md) for the full design,
-the tiering of checks by decidability, and the study this is meant to support.
+Tier A is complete. See [SPEC.md](SPEC.md) for the full design, the tiering of checks by
+decidability, the amendments made along the way, and the study this is meant to support.
 
 ## Where this came from
 
@@ -42,7 +42,9 @@ claim-audit ./GCL \
   --exclude '**/__init__.py'
 ```
 
-`--package NAME` overrides package detection. `--json` emits machine-readable output.
+`--package NAME` overrides package detection. `--docs GLOB` sets the documentation scope.
+`--json` emits machine-readable output. `--online` additionally fetches URLs found in the
+docs — off by default, reported separately, and never counted as Tier A.
 
 Exit status is always 0. Findings are questions for a human, not build failures — a
 nonzero exit would invite CI to treat them as a gate, which is the wrong shape for
@@ -67,6 +69,34 @@ Plus two derived facts:
   evaluation.
 - **Imported and never used.** A name is imported from inside the repo and never
   referenced again. An import statement is not evidence of use.
+
+## The other checks
+
+| check | asks |
+| --- | --- |
+| `breakdown-sums` | A table has a row labelled Total. Do the rows above it add up to it? |
+| `ref-resolves` | Does a `[link](path)` or a `file.py:120` citation point at something that exists, at a line the file still has? |
+| `numeral-has-source` | Does a specific figure in the prose appear in any artifact or source file in this repository? |
+| `link-resolves` | *(`--online` only)* What status does an unauthenticated fetch of this URL return? |
+
+`numeral-has-source` is narrower than it sounds, deliberately. It considers only figures
+with a decimal point and three or more significant digits, matches rounding-tolerantly,
+and treats `53.4%` and `0.534` as the same number. Integers are not considered at all.
+The reasoning is in SPEC amendment A2.
+
+## Known false-positive classes
+
+Measured on the derivation corpus, not guessed:
+
+- **Figures derived in prose.** A document saying "0.319 → 0.649 (+103.4%)" has the two
+  measurements in its artifacts but not the percentage, which was computed while writing.
+  `numeral-has-source` reports it. No fix attempted — inferring which arithmetic an author
+  performed would suppress real findings.
+- **Specific figures that are not results.** Prices, versions in prose, biographical
+  numbers. `9.99` in a pricing roadmap has no artifact and never should.
+- **Deliberately unresolvable references.** A doc that cites a path in a different
+  repository is silent by design, not correct by accident — `ref-resolves` only reports a
+  missing target for markdown links, where the intent to resolve is unambiguous.
 
 ## A flag is a question, not a verdict
 
@@ -95,6 +125,12 @@ Written before the results, and kept here rather than added later:
 5. The subtlest modes found by hand are undetectable by this approach and are documented as
    uncovered (SPEC §4, Tier C), not silently omitted.
 6. **A clean run means no tell fired. It does not mean the claims are true.**
+7. *(added after the first full Tier A run — SPEC amendment A3)* **No repository in the
+   corpus has been established clean at the scope these checks operate on.** The manual
+   audit's unit was the published claim; the tool's unit is the repository. The one repo
+   that held up under manual audit held up on the single claim that was examined, and the
+   doc-facing checks find real gaps elsewhere in it. There is therefore no negative control
+   for measuring a false-positive rate on clean repositories.
 
 ### Known gaps in package detection
 

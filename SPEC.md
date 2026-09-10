@@ -8,6 +8,11 @@ Derived from a manual audit of seven repositories (2026-09-08/09), recorded in
 a *mechanical tell* — a pattern in the source that a machine can find. This project tests whether
 those tells are real detectors or post-hoc rationalisations.
 
+**This document is a pre-registration.** Sections 1–8 were written before any code existed and
+before any result was seen. Changes to it are recorded as dated amendments at the bottom rather
+than edited in place, so that the difference between what was predicted and what was decided
+afterwards stays visible. Amendments made *after* seeing a result are marked as such.
+
 ---
 
 ## 1. The claim under test
@@ -102,6 +107,9 @@ mode 7 (a real signal authenticating a speculative one).
 `import-provenance` alone found three live failures across two repos during the manual audit. It
 ships first, standalone, before any of the rest exists.
 
+> **Amended by A1 (2026-09-09).** `numeral-has-source` was narrowed and `link-resolves` was split
+> before either was built. The rows above are left as originally written; see Amendments.
+
 ### Tier B — strong heuristics. Real false-positive rate. Must be measured, not assumed.
 
 | Check | Mode | Rule |
@@ -191,11 +199,103 @@ To go in the README from the first commit, not added later:
 
 ## Open decisions for Jason
 
-- **Name.** `claim-audit` matches the existing log file. Say if you want something else before
-  there's a remote.
-- **Public or private.** Recommend public, and early — the value proposition is that other people
-  can check it, and a private repo carrying an honesty tool is mode 8 in one move.
+- ~~**Name.**~~ Settled 2026-09-09: `claim-audit`.
+- ~~**Public or private.**~~ Settled 2026-09-09: public.
 - **Out-of-sample corpus.** Public research repos means publishing flags on other people's work.
   Recommend flags-as-questions framing, no repo named in the headline result, and the corpus list
   published so the sample isn't cherry-picked. Your call — it's the one irreversible-ish choice
-  here.
+  here. Still open; does not block phases 2–3.
+
+---
+
+## Amendments
+
+### A1 — 2026-09-09, before phase 2. Two Tier A checks re-scoped.
+
+Made before writing either check and before seeing either one's output on any repository. The
+reasoning is anticipatory, not empirical, and that distinction is the point of recording it: if
+these checks turn out to be quieter than predicted, this note is the evidence that they were
+narrowed on a guess.
+
+**`numeral-has-source` narrowed.** As written in §4 the rule was "every numeral in README/docs
+prose has a counterpart in some results artifact or source literal." That cannot hold to Tier A's
+~0 false-positive standard. It would fire on version strings, years, section and figure numbers,
+hyperparameters stated in prose, and — the case that actually kills it — every rounded figure.
+A results artifact holding `0.534` and prose reading "53%" is an orphan under the literal rule,
+and rounding is the ordinary thing prose does to numbers.
+
+This matters more here than tiering usually would. §4 itself says that presenting a heuristic and
+a fact with the same confidence is mode 7. Shipping the broad rule inside Tier A would be the tool
+committing the mode this check is named for.
+
+Narrowed to: numerals that are *specific* — containing a decimal point, or carrying three or more
+significant figures — matched **rounding-tolerantly** against numerals in results artifacts and
+source literals. Years, version strings, section and figure numbers, and small integers are out of
+scope entirely and are not counted as either hits or orphans. The broad form is not promoted to
+Tier B; it is dropped. What remains is a narrower claim than §4 made.
+
+**`link-resolves` split.** §4 bundled two things with different epistemic status. Resolving a
+`file:line` citation against the repository is local, deterministic and offline — that half keeps
+the name `ref-resolves` and stays Tier A. Fetching a URL is none of those things: it needs network,
+it is non-deterministic under rate limits, and unauthenticated GitHub returns 404 for a repository
+that is merely private. `agentic-pr` is private by standing decision, so the literal rule would
+report its links as broken when the only fact established is that the fetcher cannot see them.
+
+URL checking therefore ships behind `--online`, off by default, reported in its own section, and
+**never counted toward Tier A totals**. A 404 and a rate-limit are not the same fact and the tool
+does not merge them.
+
+**Unchanged:** `breakdown-sums` ships as specified in §4.
+
+### A2 — 2026-09-09, **after** seeing results on the negative control. Two changes to `numeral-has-source`.
+
+Unlike A1, this was made in response to output. It is the kind of adjustment that inflates a
+later precision figure, so it is recorded in full and the run that prompted it is described.
+
+The first full Tier A run against CNL produced 45 findings. Two were plainly wrong: `190`, from
+"deploying production systems across 190 hospitals" in an author bio, and `243`, an element of the
+timescale list `[1, 3, 9, 27, 81, 243, 729]`. A third, `109` (the repository's test count), was
+true but too weak to be worth a reader's attention.
+
+**Integers dropped.** Every clear true positive in that run carried a decimal point; every false
+positive was an integer. The argument for the change is prior rather than empirical — an integer's
+absence from the artifacts is weak evidence, because integers are usually counts of things nobody
+stores as data, and because they collide by coincidence far more often than decimals do. But I
+only went looking for that argument after seeing which findings were wrong, and that is the part
+worth recording. `_is_specific` now requires a decimal point and three significant digits.
+
+**Findings deduplicated by value.** The same untraceable ablation table appeared in a blog post and
+a slide deck, and was reported 27 times. One gap reported 27 times would dominate any per-finding
+precision statistic — the exact measurement error this project exists to catch. `numeral-has-source`
+now emits one finding per distinct orphan value, listing the other locations as evidence.
+
+**Residual over-counting, not fixed.** The twelve cells of a single results table still produce
+twelve findings. They are one gap. No grouping rule was added, because "same table" is a judgement
+and this check should not be making judgements. The phase 4 metric must therefore define its unit
+of analysis explicitly — per gap, not per finding — or it will overstate.
+
+### A3 — 2026-09-09, after the same run. The CNL negative control does not cover Tier A.
+
+§6 phase 2 says "any Tier A flag on CNL is investigated as a tool bug before it is reported as a
+finding." That gate assumed CNL was established clean. It was not, and cannot do the work asked of
+it.
+
+The manual audit examined **one claim** from CNL — "+89% from bridges" — plus a separate coverage
+claim. The first traced to `ci_results/latest.json` and held; the second was wrong and was
+corrected. Nothing else in the repository was audited. `docs/PRESENTATION_DESIGN.md` and
+`docs/BLOG_POST.md` were never looked at, and both contain a six-row ablation table whose figures
+appear nowhere in the repository.
+
+So the surviving Tier A flags on CNL are, as far as I can tell by hand, correct. **CNL held up on
+the claim that was audited. It is not a clean repository, and it never had to be.**
+
+Consequences:
+
+- The phase 2 gate is void as written. A Tier A flag on CNL is investigated as a *possible* tool
+  bug and adjudicated by hand; it is not presumed to be one.
+- **There is no clean negative control for the doc-facing checks.** Phase 4 cannot use CNL to
+  estimate a false-positive rate on clean repositories, because no repository in the corpus has
+  been established clean at the scope these checks operate on.
+- The mismatch is itself a finding about the manual audit: its unit was the published claim, and
+  the tool's unit is the repository. Those are not the same thing, and any comparison between
+  hand results and tool results has to say which unit it is using.
